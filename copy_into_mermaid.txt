@@ -75,7 +75,7 @@ S7 --> S10
 %% Stop loop
 D6 --> D7
 D7 -->|Yes| D4
-D7 -->|No (trip complete)| D8 --> D9 --> S7
+D7 -->|No| D8 --> D9 --> S7
 
 %% Next trip decision
 D9 --> D10
