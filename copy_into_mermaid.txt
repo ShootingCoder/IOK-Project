@@ -1,0 +1,88 @@
+flowchart LR
+%% ============================================================
+%% ROS Digital Collection & Reporting (BPMN-style, English)
+%% Option A: include MOG unloading
+%% Trips are modular: any number per day (planned + ad-hoc)
+%% Anomalies are detected immediately during driver input (soft validation)
+%% ============================================================
+
+%% -------------------- LANE: ECOG Administrative Assistant --------------------
+subgraph L1["ECOG Administrative Assistant"]
+  A1["(Timer / Recurring)\nMaintain weekly planning template\n+ holiday exceptions"]
+  A2["Create/adjust daily plan\n(Trips + Stops per truck)\n(last-minute changes allowed)"]
+  A3["Monitor submissions & flagged cases\n(search/filter)"]
+  A4["Prepare monthly MATIS export (CSV)\n+ day-to-day operational views"]
+end
+
+%% -------------------- LANE: Power Platform System --------------------
+subgraph L2["Power Platform System\n(Power Apps + Dataverse + Power Automate)"]
+  S1["Persist plan in Dataverse\n(Trips, Stops, Locations)"]
+  S2["Tablet app loads:\n- assigned stops\n- locations\n- waste fractions\n- EURAL mapping\n- conversion weights\n- validation rules"]
+  S3["System calculates in background:\n- EURAL code\n- unit→weight conversion"]
+  S4["Real-time validation while entering:\n- required fields\n- unit/decimal sanity\n- unusual quantity detection"]
+  S5{"Validation OK\nor Override allowed?"}
+  S6["If flagged: show warning to driver\nRequire override confirmation\n+ mandatory comment/reason"]
+  S7["Save 'Stop Collection' to Dataverse:\nquantities + comments\n+ calculated fields\n+ flags + override reason\n+ timestamps/audit"]
+  S8["Send simple confirmation email\n(to location contact):\ntime + what was collected"]
+  S9["Publish read-only overview\nper location (internal/external)"]
+  S10["Log all data flows / audit trail\n(exportable, open license-friendly)"]
+end
+
+%% -------------------- LANE: ROS Driver (Collector) --------------------
+subgraph L3["ROS Driver (Collector)"]
+  D0["Start day\nOpen ROS tablet app"]
+  D1["Select truck + date\nView planned trips"]
+  D2{"Start a trip?\n(planned or ad-hoc)"}
+  D3["Start trip\n(status = In Progress)"]
+  D4["Go to next stop/location"]
+  D5["Register collection at stop:\nSelect fractions + enter quantities\n+ optional comment"]
+  D6["Submit stop registration\n('Stop Completed')"]
+  D7{"More stops\nin this trip?"}
+  D8["Drive to MOG"]
+  D9["Confirm unloading at MOG\n(end trip)\n(status = Unloaded)"]
+  D10{"More trips today?"}
+  D11["End day\nView my submissions"]
+end
+
+%% -------------------- LANE: Recycling Park / Shop (View-only) --------------------
+subgraph L4["Recycling Park / Shop (View-only)"]
+  P1["Receive email confirmation\n(time + collected items)"]
+  P2["View-only overview\nof collections at location"]
+  P3["If dispute/question:\ncontact ECOG admin\n(outside the application)"]
+end
+
+%% ============================================================
+%% SEQUENCE FLOWS
+%% ============================================================
+
+A1 --> A2 --> S1
+S1 --> D0 --> D1 --> D2
+
+%% Trip start loop (modular trips)
+D2 -->|Yes| D3 --> S2 --> D4 --> D5
+
+%% Real-time validation + background calculations
+D5 --> S4 --> S3 --> S5
+
+S5 -->|OK| D6
+S5 -->|Flagged: driver overrides| S6 --> D6
+
+%% Save + notify location
+D6 --> S7 --> S8 --> P1
+S7 --> S9 --> P2 --> P3
+S7 --> S10
+
+%% Stop loop
+D6 --> D7
+D7 -->|Yes| D4
+D7 -->|No (trip complete)| D8 --> D9 --> S7
+
+%% Next trip decision
+D9 --> D10
+D10 -->|Yes| D2
+D10 -->|No| D11
+
+%% Admin monitoring & reporting (not editing driver submissions)
+S7 --> A3
+A3 --> A4
+S7 --> A4
