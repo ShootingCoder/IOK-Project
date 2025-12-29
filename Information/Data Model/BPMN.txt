@@ -1,0 +1,72 @@
+erDiagram
+    LOCATION ||--o{ STOP : "visited at"
+    TRIP ||--o{ STOP : "contains"
+    STOP ||--o{ STOP_LINE : "contains"
+    WASTE_FRACTION ||--o{ STOP_LINE : "entered as"
+
+    TRIP ||--o| UNLOADING_EVENT : "closed by (MOG)"
+    LOCATION ||--o{ UNLOADING_EVENT : "unloaded at"
+
+    LOCATION {
+      string LocationId PK
+      string Name
+      string LocationType "IOKPark|ExternalPark|SecondHandShop|MOG"
+      string ContactEmail
+      boolean Active
+    }
+
+    WASTE_FRACTION {
+      string WasteFractionId PK
+      string Name
+      string DefaultUnit "Piece|Bag|Kg|..."
+      string EuralCode "system-owned"
+      decimal KgPerUnit "system-owned"
+      boolean Active
+    }
+
+    TRIP {
+      string TripId PK
+      date TripDate
+      string TruckCode
+      string DriverUserId "M365 user id/email"
+      datetime StartTime "auto"
+      datetime EndTime "set at unloading"
+      string Status "InProgress|Unloaded|Closed"
+      boolean IsPlanned "optional"
+    }
+
+    STOP {
+      string StopId PK
+      string TripId FK
+      string LocationId FK
+      int SequenceNumber
+      datetime ArrivalTime "auto/manual"
+      datetime SubmittedTime "auto"
+      string Status "Draft|Submitted"
+      string DriverComment
+      boolean IsSynced "offline tolerant"
+      boolean IsFlagged "true if any line flagged"
+    }
+
+    STOP_LINE {
+      string StopLineId PK
+      string StopId FK
+      string WasteFractionId FK
+      decimal Quantity
+      string QuantityUnit
+      string LineComment
+      decimal CalculatedWeightKg "system-owned"
+      string CalculatedEuralCode "system-owned"
+      boolean IsFlagged
+      string FlagReason
+      boolean DriverOverrideUsed
+      string OverrideComment
+    }
+
+    UNLOADING_EVENT {
+      string UnloadingEventId PK
+      string TripId FK
+      string LocationId FK "MOG"
+      datetime UnloadTime "auto"
+      string ConfirmedBy "DriverUserId"
+    }
